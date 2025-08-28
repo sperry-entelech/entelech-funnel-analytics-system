@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entelech Funnel Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .conversion-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .revenue-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .bottleneck-card {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .sidebar {
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .sidebar h4 {
+            color: #ecf0f1;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+        .nav-item {
+            margin-bottom: 10px;
+        }
+        .nav-link {
+            color: #bdc3c7 !important;
+            padding: 12px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white !important;
+        }
+        .alert-item {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .high-priority {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .recommendation-item {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .loader {
+            text-align: center;
+            padding: 50px;
+        }
+        .date-range-picker {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .export-buttons {
+            margin-top: 15px;
+        }
+        .export-buttons .btn {
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar">
+                <h4><i class="fas fa-chart-line"></i> Entelech Funnel Analytics</h4>
+                <nav class="nav nav-pills flex-column">
+                    <a class="nav-link active" data-tab="overview" href="#"><i class="fas fa-tachometer-alt"></i> Overview</a>
+                    <a class="nav-link" data-tab="funnel" href="#"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</a>
+                    <a class="nav-link" data-tab="sources" href="#"><i class="fas fa-chart-pie"></i> Lead Sources</a>
+                    <a class="nav-link" data-tab="bottlenecks" href="#"><i class="fas fa-exclamation-triangle"></i> Bottlenecks</a>
+                    <a class="nav-link" data-tab="revenue" href="#"><i class="fas fa-dollar-sign"></i> Revenue Attribution</a>
+                    <a class="nav-link" data-tab="trends" href="#"><i class="fas fa-chart-area"></i> Trends</a>
+                    <a class="nav-link" data-tab="insights" href="#"><i class="fas fa-lightbulb"></i> Insights</a>
+                </nav>
+                
+                <div class="export-buttons">
+                    <h6 class="mt-4 mb-3">Export Data</h6>
+                    <button class="btn btn-sm btn-outline-light" onclick="exportData('lead_sources')">
+                        <i class="fas fa-download"></i> Lead Sources
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" onclick="exportData('revenue_attribution')">
+                        <i class="fas fa-download"></i> Revenue Data
+                    </button>
+                    <button class="btn btn-sm btn-outline-light" onclick="exportData('comprehensive')">
+                        <i class="fas fa-download"></i> Full Report
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10">
+                <div class="container-fluid py-4">
+                    
+                    <!-- Date Range Picker -->
+                    <div class="date-range-picker">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h2><i class="fas fa-analytics"></i> Sales Funnel Performance Dashboard</h2>
+                                <p class="text-muted">Data-driven insights on lead conversion and revenue attribution</p>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <label class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="startDate">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" class="form-control" id="endDate">
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary mt-2 w-100" onclick="updateDateRange()">
+                                    <i class="fas fa-refresh"></i> Update Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Content Sections -->
+                    <div id="content-area">
+                        <!-- Overview Tab -->
+                        <div id="overview-content" class="tab-content active">
+                            <div class="row">
+                                <!-- Key Metrics Cards -->
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="total-leads">-</div>
+                                        <div class="metric-label">Total Leads</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card conversion-card">
+                                        <div class="metric-value" id="conversion-rate">-</div>
+                                        <div class="metric-label">Conversion Rate</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card revenue-card">
+                                        <div class="metric-value" id="total-revenue">-</div>
+                                        <div class="metric-label">Total Revenue</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card bottleneck-card">
+                                        <div class="metric-value" id="avg-deal-size">-</div>
+                                        <div class="metric-label">Avg Deal Size</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <!-- Quick Funnel View -->
+                                <div class="col-md-8">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h5>
+                                        <div id="quick-funnel-chart"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Lead Sources -->
+                                <div class="col-md-4">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-trophy"></i> Top Performing Sources</h5>
+                                        <div id="top-sources-list">
+                                            <div class="loader">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Funnel Analysis Tab -->
+                        <div id="funnel-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-funnel-dollar"></i> Detailed Conversion Funnel</h5>
+                                        <div id="detailed-funnel-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-percent"></i> Stage Conversion Rates</h5>
+                                        <div id="stage-conversion-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-clock"></i> Average Time in Each Stage</h5>
+                                        <div id="stage-duration-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lead Sources Tab -->
+                        <div id="sources-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-chart-pie"></i> Revenue by Lead Source</h5>
+                                        <div id="revenue-by-source-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-chart-bar"></i> Lead Source ROI</h5>
+                                        <div id="source-roi-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-table"></i> Lead Source Performance Details</h5>
+                                        <div id="sources-table"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottlenecks Tab -->
+                        <div id="bottlenecks-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-exclamation-triangle"></i> Funnel Bottlenecks Analysis</h5>
+                                        <div id="bottlenecks-list">
+                                            <div class="loader">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-lightbulb"></i> Improvement Recommendations</h5>
+                                        <div id="recommendations-list">
+                                            <div class="loader">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Revenue Attribution Tab -->
+                        <div id="revenue-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-dollar-sign"></i> Revenue Attribution by Source</h5>
+                                        <div id="revenue-attribution-chart"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-cog"></i> Attribution Model</h5>
+                                        <select class="form-select mb-3" id="attribution-model">
+                                            <option value="first_touch">First Touch</option>
+                                            <option value="last_touch">Last Touch</option>
+                                            <option value="linear">Linear</option>
+                                            <option value="time_decay">Time Decay</option>
+                                            <option value="position_based">Position Based</option>
+                                        </select>
+                                        <div id="attribution-summary"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Trends Tab -->
+                        <div id="trends-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-chart-area"></i> Funnel Performance Trends (12 Weeks)</h5>
+                                        <div id="trends-chart"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Insights Tab -->
+                        <div id="insights-content" class="tab-content">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-lightbulb"></i> Strategic Insights & Recommendations</h5>
+                                        <div id="strategic-insights">
+                                            <div class="loader">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="chart-container">
+                                        <h5><i class="fas fa-chart-bar"></i> Executive Summary</h5>
+                                        <div id="executive-summary">
+                                            <div class="loader">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let currentDateRange = {
+            start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            end: new Date().toISOString().split('T')[0]
+        };
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default dates
+            document.getElementById('startDate').value = currentDateRange.start;
+            document.getElementById('endDate').value = currentDateRange.end;
+            
+            // Load initial data
+            loadOverviewData();
+            
+            // Tab navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tab = this.getAttribute('data-tab');
+                    switchTab(tab);
+                });
+            });
+            
+            // Attribution model change
+            document.getElementById('attribution-model').addEventListener('change', function() {
+                if (document.getElementById('revenue-content').classList.contains('active')) {
+                    loadRevenueAttributionData();
+                }
+            });
+        });
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Update nav
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-content`).classList.add('active');
+            
+            // Load tab-specific data
+            switch(tabName) {
+                case 'overview':
+                    loadOverviewData();
+                    break;
+                case 'funnel':
+                    loadFunnelData();
+                    break;
+                case 'sources':
+                    loadLeadSourcesData();
+                    break;
+                case 'bottlenecks':
+                    loadBottlenecksData();
+                    break;
+                case 'revenue':
+                    loadRevenueAttributionData();
+                    break;
+                case 'trends':
+                    loadTrendsData();
+                    break;
+                case 'insights':
+                    loadInsightsData();
+                    break;
+            }
+        }
+        
+        // Update date range
+        function updateDateRange() {
+            currentDateRange.start = document.getElementById('startDate').value;
+            currentDateRange.end = document.getElementById('endDate').value;
+            
+            // Reload current tab data
+            const activeTab = document.querySelector('.nav-link.active').getAttribute('data-tab');
+            switchTab(activeTab);
+        }
+        
+        // API call helper
+        async function apiCall(endpoint, params = {}) {
+            const urlParams = new URLSearchParams({
+                start_date: currentDateRange.start,
+                end_date: currentDateRange.end,
+                ...params
+            });
+            
+            const response = await fetch(`/api/${endpoint}?${urlParams}`);
+            return await response.json();
+        }
+        
+        // Load overview data
+        async function loadOverviewData() {
+            try {
+                const data = await apiCall('overview');
+                
+                // Update metric cards
+                document.getElementById('total-leads').textContent = data.key_metrics.total_leads;
+                document.getElementById('conversion-rate').textContent = data.key_metrics.overall_conversion_rate;
+                document.getElementById('total-revenue').textContent = data.key_metrics.total_revenue;
+                document.getElementById('avg-deal-size').textContent = data.key_metrics.avg_deal_size;
+                
+                // Load quick funnel chart
+                const funnelData = await apiCall('conversion-funnel');
+                createQuickFunnelChart(funnelData);
+                
+                // Update top sources
+                updateTopSourcesList(data.top_sources);
+                
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            }
+        }
+        
+        // Create quick funnel chart
+        function createQuickFunnelChart(data) {
+            const ctx = document.getElementById('quick-funnel-chart');
+            if (!ctx) return;
+            
+            ctx.innerHTML = '<canvas id="quick-funnel-canvas"></canvas>';
+            const canvas = document.getElementById('quick-funnel-canvas');
+            
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: data.stages,
+                    datasets: [{
+                        label: 'Prospects',
+                        data: data.values,
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB', 
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update top sources list
+        function updateTopSourcesList(sources) {
+            const container = document.getElementById('top-sources-list');
+            if (!sources || sources.length === 0) {
+                container.innerHTML = '<p class="text-muted">No data available</p>';
+                return;
+            }
+            
+            let html = '';
+            sources.forEach((source, index) => {
+                const revenue = parseFloat(source.total_revenue) || 0;
+                const rate = parseFloat(source.conversion_rate) || 0;
+                
+                html += `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <strong>${source.source_name}</strong><br>
+                            <small class="text-muted">Conversion: ${rate.toFixed(1)}%</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>$${revenue.toLocaleString()}</strong>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Load funnel data
+        async function loadFunnelData() {
+            try {
+                const data = await apiCall('conversion-funnel');
+                createDetailedFunnelChart(data);
+            } catch (error) {
+                console.error('Error loading funnel data:', error);
+            }
+        }
+        
+        // Create detailed funnel chart
+        function createDetailedFunnelChart(data) {
+            const funnelData = [{
+                type: "funnel",
+                y: data.stages,
+                x: data.values,
+                textinfo: "value+percent initial",
+                textposition: "inside",
+                marker: {
+                    color: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"]
+                }
+            }];
+            
+            const layout = {
+                title: "Sales Funnel Conversion",
+                margin: {l: 150, r: 50, t: 50, b: 50}
+            };
+            
+            Plotly.newPlot('detailed-funnel-chart', funnelData, layout);
+        }
+        
+        // Load lead sources data
+        async function loadLeadSourcesData() {
+            try {
+                const data = await apiCall('lead-sources');
+                createLeadSourceCharts(data);
+                createSourcesTable(data.sources);
+            } catch (error) {
+                console.error('Error loading lead sources data:', error);
+            }
+        }
+        
+        // Create lead source charts
+        function createLeadSourceCharts(data) {
+            if (!data.charts) return;
+            
+            // Revenue by source pie chart
+            const revenueChart = [{
+                values: data.charts.revenue_by_source.values,
+                labels: data.charts.revenue_by_source.labels,
+                type: 'pie',
+                marker: {
+                    colors: data.charts.revenue_by_source.colors
+                }
+            }];
+            
+            Plotly.newPlot('revenue-by-source-chart', revenueChart);
+            
+            // ROI bar chart
+            const roiChart = [{
+                x: data.charts.roi_analysis.sources,
+                y: data.charts.roi_analysis.roi,
+                type: 'bar',
+                marker: {
+                    color: '#36A2EB'
+                }
+            }];
+            
+            const roiLayout = {
+                title: "ROI by Lead Source (%)",
+                xaxis: { title: "Lead Source" },
+                yaxis: { title: "ROI %" }
+            };
+            
+            Plotly.newPlot('source-roi-chart', roiChart, roiLayout);
+        }
+        
+        // Create sources table
+        function createSourcesTable(sources) {
+            const container = document.getElementById('sources-table');
+            if (!sources || sources.length === 0) {
+                container.innerHTML = '<p class="text-muted">No data available</p>';
+                return;
+            }
+            
+            let html = `
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Total Leads</th>
+                            <th>Contracts</th>
+                            <th>Revenue</th>
+                            <th>Conversion Rate</th>
+                            <th>ROI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            sources.forEach(source => {
+                html += `
+                    <tr>
+                        <td><strong>${source.source_name}</strong></td>
+                        <td>${source.total_leads || 0}</td>
+                        <td>${source.contracts_signed || 0}</td>
+                        <td>$${(source.total_revenue || 0).toLocaleString()}</td>
+                        <td>${(source.conversion_rate || 0).toFixed(1)}%</td>
+                        <td>${(source.roi || 0).toFixed(0)}%</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        // Load bottlenecks data
+        async function loadBottlenecksData() {
+            try {
+                const data = await apiCall('bottlenecks');
+                updateBottlenecksList(data.bottlenecks);
+                updateRecommendationsList(data.bottlenecks);
+            } catch (error) {
+                console.error('Error loading bottlenecks data:', error);
+            }
+        }
+        
+        // Update bottlenecks list
+        function updateBottlenecksList(bottlenecks) {
+            const container = document.getElementById('bottlenecks-list');
+            if (!bottlenecks || bottlenecks.length === 0) {
+                container.innerHTML = '<p class="text-muted">No bottlenecks identified</p>';
+                return;
+            }
+            
+            let html = '';
+            bottlenecks.forEach(bottleneck => {
+                const severityClass = bottleneck.bottleneck_severity === 'HIGH' ? 'high-priority' : '';
+                
+                html += `
+                    <div class="alert-item ${severityClass}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>${bottleneck.stage_name}</h6>
+                                <p class="mb-1">Conversion Rate: ${bottleneck.conversion_rate.toFixed(1)}%</p>
+                                <p class="mb-0">Prospects Stuck: ${bottleneck.prospects_stuck}</p>
+                            </div>
+                            <div>
+                                <span class="badge ${bottleneck.bottleneck_severity === 'HIGH' ? 'bg-danger' : bottleneck.bottleneck_severity === 'MEDIUM' ? 'bg-warning' : 'bg-success'}">
+                                    ${bottleneck.bottleneck_severity}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Update recommendations list
+        function updateRecommendationsList(bottlenecks) {
+            const container = document.getElementById('recommendations-list');
+            let recommendations = [];
+            
+            bottlenecks.forEach(bottleneck => {
+                if (bottleneck.bottleneck_severity === 'HIGH' && bottleneck.recommendations) {
+                    recommendations.push(...bottleneck.recommendations.slice(0, 2));
+                }
+            });
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = '<p class="text-muted">No high-priority recommendations</p>';
+                return;
+            }
+            
+            let html = '';
+            recommendations.slice(0, 5).forEach(rec => {
+                html += `
+                    <div class="recommendation-item">
+                        <i class="fas fa-lightbulb text-warning"></i>
+                        ${rec}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Load revenue attribution data
+        async function loadRevenueAttributionData() {
+            try {
+                const model = document.getElementById('attribution-model').value;
+                const data = await apiCall('revenue-attribution', { model });
+                createRevenueAttributionChart(data);
+                updateAttributionSummary(data);
+            } catch (error) {
+                console.error('Error loading revenue attribution data:', error);
+            }
+        }
+        
+        // Create revenue attribution chart
+        function createRevenueAttributionChart(data) {
+            if (!data.chart_data) return;
+            
+            const chartData = [{
+                values: data.chart_data.values,
+                labels: data.chart_data.labels,
+                type: 'pie',
+                textinfo: 'label+percent',
+                textposition: 'outside'
+            }];
+            
+            const layout = {
+                title: `Revenue Attribution (${data.model.replace('_', ' ').toUpperCase()})`
+            };
+            
+            Plotly.newPlot('revenue-attribution-chart', chartData, layout);
+        }
+        
+        // Update attribution summary
+        function updateAttributionSummary(data) {
+            const container = document.getElementById('attribution-summary');
+            
+            let html = `
+                <div class="mb-3">
+                    <h6>Total Attributed Revenue</h6>
+                    <h4 class="text-primary">$${(data.total_revenue || 0).toLocaleString()}</h4>
+                </div>
+            `;
+            
+            if (data.attribution && data.attribution.length > 0) {
+                html += '<h6>Top Sources:</h6>';
+                data.attribution.slice(0, 3).forEach(attr => {
+                    html += `
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>${attr.source_name}</span>
+                            <span><strong>${attr.revenue_percentage.toFixed(1)}%</strong></span>
+                        </div>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // Load trends data
+        async function loadTrendsData() {
+            try {
+                const data = await apiCall('trends');
+                createTrendsChart(data);
+            } catch (error) {
+                console.error('Error loading trends data:', error);
+            }
+        }
+        
+        // Create trends chart
+        function createTrendsChart(data) {
+            if (!data.weekly_trends) return;
+            
+            const traces = [
+                {
+                    x: data.weekly_trends.weeks,
+                    y: data.weekly_trends.leads,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Leads',
+                    yaxis: 'y'
+                },
+                {
+                    x: data.weekly_trends.weeks,
+                    y: data.weekly_trends.contracts,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Contracts',
+                    yaxis: 'y'
+                },
+                {
+                    x: data.weekly_trends.weeks,
+                    y: data.weekly_trends.conversion_rates,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Conversion Rate (%)',
+                    yaxis: 'y2'
+                }
+            ];
+            
+            const layout = {
+                title: 'Weekly Funnel Performance Trends',
+                xaxis: { title: 'Week' },
+                yaxis: { title: 'Count' },
+                yaxis2: {
+                    title: 'Conversion Rate (%)',
+                    overlaying: 'y',
+                    side: 'right'
+                }
+            };
+            
+            Plotly.newPlot('trends-chart', traces, layout);
+        }
+        
+        // Load insights data
+        async function loadInsightsData() {
+            try {
+                const data = await apiCall('insights');
+                updateStrategicInsights(data);
+                updateExecutiveSummary(data);
+            } catch (error) {
+                console.error('Error loading insights data:', error);
+            }
+        }
+        
+        // Update strategic insights
+        function updateStrategicInsights(data) {
+            const container = document.getElementById('strategic-insights');
+            
+            if (!data.key_recommendations || data.key_recommendations.length === 0) {
+                container.innerHTML = '<p class="text-muted">No insights available</p>';
+                return;
+            }
+            
+            let html = '<h6>Strategic Recommendations</h6>';
+            data.key_recommendations.forEach((rec, index) => {
+                html += `
+                    <div class="recommendation-item">
+                        <div class="d-flex">
+                            <div class="badge bg-primary me-3">${index + 1}</div>
+                            <div>${rec}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Update executive summary
+        function updateExecutiveSummary(data) {
+            const container = document.getElementById('executive-summary');
+            
+            if (!data.executive_summary) {
+                container.innerHTML = '<p class="text-muted">No summary available</p>';
+                return;
+            }
+            
+            const summary = data.executive_summary;
+            
+            let html = `
+                <div class="mb-3">
+                    <h6>Pipeline Value</h6>
+                    <h4 class="text-success">$${(summary.total_pipeline_value || 0).toLocaleString()}</h4>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Conversion Health</h6>
+                    <span class="badge ${summary.conversion_health === 'Good' ? 'bg-success' : 'bg-warning'}">
+                        ${summary.conversion_health || 'Unknown'}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Primary Bottleneck</h6>
+                    <p>${summary.primary_bottleneck || 'None identified'}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Top Source</h6>
+                    <p><strong>${summary.top_performing_source || 'No data'}</strong></p>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Export data
+        function exportData(reportType) {
+            const params = new URLSearchParams({
+                start_date: currentDateRange.start,
+                end_date: currentDateRange.end
+            });
+            
+            window.open(`/api/export/${reportType}?${params}`, '_blank');
+        }
+    </script>
+</body>
+</html>
